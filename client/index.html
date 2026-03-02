@@ -1,0 +1,10 @@
+<canvas id="canvas"></canvas>
+<script type="module">
+    import init from "./pkg/ksu_capstone_frontend.js";
+    init();
+</script>
+<script>
+    window.addEventListener("beforeunload", () => {
+        navigator.sendBeacon("/__shutdown");
+    });
+</script>

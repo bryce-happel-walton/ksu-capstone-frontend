@@ -1,0 +1,17 @@
+[package]
+    name    = "server"
+    version = "0.1.0"
+    edition = "2024"
+    build   = "build.rs"
+
+[dependencies]
+    axum        = "*"
+    tokio       = { version = "*", features = ["full"] }
+    mime_guess  = "*"
+    include_dir = "*"
+    webbrowser  = "*"
+
+[build-dependencies]
+    anyhow                   = "*"
+    fs_extra                 = "*"
+    wasm-bindgen-cli-support = "*"

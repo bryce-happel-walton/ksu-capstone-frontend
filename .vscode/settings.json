@@ -1,0 +1,6 @@
+{
+    "slint.libraryPaths": {
+        "images": "resources/images",
+        "fonts": "resources/fonts"
+    }
+}

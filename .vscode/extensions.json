@@ -1,0 +1,7 @@
+{
+    "recommendations": [
+        "rust-lang.rust-analyzer",
+        "slint.slint",
+        "tamasfe.even-better-toml"
+    ]
+}
