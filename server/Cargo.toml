@@ -13,5 +13,4 @@
 
 [build-dependencies]
     anyhow                   = "*"
-    fs_extra                 = "*"
     wasm-bindgen-cli-support = "*"

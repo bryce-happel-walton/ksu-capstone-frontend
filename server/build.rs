@@ -1,5 +1,4 @@
 use anyhow::{Context, Result};
-use fs_extra::dir::{CopyOptions, copy as copy_dir};
 use std::{env, fs};
 use std::{path::PathBuf, process::Command};
 
