@@ -42,7 +42,7 @@ fn update_vscode_slint_libpaths() -> Result<()> {
 
             for (key, path) in SLINT_LIBRARY_PATHS.iter() {
                 settings[SETTING_NAME][key] = path
-                    .strip_prefix(MANIFEST_DIR.as_path())
+                    .strip_prefix(workspace_root.as_path())
                     .unwrap()
                     .to_str()
                     .into();
