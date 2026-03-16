@@ -1,16 +1,16 @@
-use axum::{
-    Router,
-    body::Body,
-    extract::State,
-    http::{Response, StatusCode, Uri, header},
-    routing::{get, post},
-};
+use axum::Router;
+use axum::body::Body;
+use axum::extract::State;
+use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
+use axum::http::{Response, StatusCode, Uri, header};
+use axum::response::IntoResponse;
+use axum::routing::{get, post};
 use include_dir::{Dir, include_dir};
 use mime_guess::MimeGuess;
 use std::{net::SocketAddr, sync::Arc};
 use tokio::sync::{Mutex, oneshot};
 
-static WEB: Dir = include_dir!("$OUT_DIR/web");
+const WEB: Dir = include_dir!("$OUT_DIR/web");
 
 #[derive(Clone)]
 struct AppState {
@@ -27,10 +27,13 @@ async fn main() {
 
     let app = Router::new()
         .route("/__shutdown", post(shutdown))
+        .route(
+            &format!("/{}", shared::WEB_SOCKET_DIR),
+            get(websocket_handler),
+        )
         .fallback(get(serve_embedded))
         .with_state(state);
 
-    // Bind to an available port
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr: SocketAddr = listener.local_addr().unwrap();
 
@@ -77,6 +80,51 @@ async fn serve_embedded(uri: Uri) -> Response<Body> {
             .status(StatusCode::NOT_FOUND)
             .header(header::CONTENT_TYPE, "text/plain; charset=utf-8")
             .body(Body::from("404"))
+            .unwrap(),
+    }
+}
+
+async fn handle_socket(mut socket: WebSocket) {
+    let mut increment = 0;
+    let mut boolcrement = false;
+    loop {
+        let mut data = shared::EspData::default();
+        data.hello = "world!".to_owned();
+        data.beep = increment;
+        data.boop = boolcrement;
+
+        increment += 1;
+        boolcrement = !boolcrement;
+
+        let json = serde_json::to_string(&data).unwrap();
+        if socket.send(Message::Text(json.into())).await.is_err() {
+            break;
+        }
+        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+    }
+}
+
+async fn websocket_handler(web_socket: WebSocketUpgrade) -> impl IntoResponse {
+    web_socket
+        .on_failed_upgrade(|error| println!("Error upgrading websocket: {}", error))
+        .on_upgrade(handle_socket)
+}
+
+async fn get_raw_esp_data() -> axum::http::Response<String> {
+    match reqwest::get(shared::ESP_DATA_DIR).await {
+        Ok(res) => match res.text().await {
+            Ok(body) => Response::builder()
+                .status(StatusCode::OK)
+                .body(body)
+                .unwrap(),
+            Err(_) => Response::builder()
+                .status(StatusCode::BAD_REQUEST)
+                .body("Failed to read response".to_string())
+                .unwrap(),
+        },
+        Err(_) => Response::builder()
+            .status(StatusCode::BAD_GATEWAY)
+            .body("Failed to reach network".to_string())
             .unwrap(),
     }
 }

@@ -3,6 +3,10 @@ use std::{env, fs};
 use std::{path::PathBuf, process::Command};
 
 fn main() -> Result<()> {
+    let out_dir = std::env::var("OUT_DIR").unwrap();
+    let web_dir = format!("{}/web", out_dir);
+    std::fs::create_dir_all(&web_dir).unwrap();
+
     println!("cargo:rerun-if-changed=../client/index.html");
     println!("cargo:rerun-if-changed=../client/resources");
     println!("cargo:rerun-if-changed=../client/src");
@@ -31,11 +35,17 @@ fn main() -> Result<()> {
 
     let isolated_target_dir = out_dir.join("wasm_target");
 
+    let profile = std::env::var("PROFILE").unwrap_or_else(|_| "debug".to_string());
+
     let mut cmd = Command::new("wasm-pack");
     cmd.current_dir(&workspace_root).args([
         "build",
         client_crate_dir.to_string_lossy().as_ref(),
-        "--release",
+        if profile == "release" {
+            "--release"
+        } else {
+            "--dev"
+        },
         "--target",
         "web",
         "--out-dir",

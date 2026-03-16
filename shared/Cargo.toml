@@ -1,0 +1,14 @@
+[package]
+    name    = "shared"
+    version = "0.1.0"
+    edition = "2024"
+
+[lib]
+    path = "src/lib.rs"
+    name = "shared"
+
+[dependencies]
+    serde = { workspace = true }
+
+[build-dependencies]
+    bindgen = "*" # TODO: take shared header from the embedded side to generate esp data structs

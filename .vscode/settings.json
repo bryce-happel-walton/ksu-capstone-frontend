@@ -2,5 +2,10 @@
     "slint.libraryPaths": {
         "images": "client/resources/images",
         "fonts": "client/resources/fonts"
-    }
+    },
+    "rust-analyzer.linkedProjects": [
+        "server/Cargo.toml",
+        "shared/Cargo.toml",
+        "client/Cargo.toml"
+    ]
 }

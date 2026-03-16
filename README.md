@@ -1,14 +1,6 @@
 
 # KSU Capstone Project
 
-## Running native
-
-Will typically be quicker to integrate
-
-```sh
-cargo run -p client
-```
-
 ## Running in broswer
 
 First install `wasm-pack`

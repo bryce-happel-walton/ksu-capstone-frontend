@@ -1,10 +1,11 @@
+<!DOCTYPE html>
 <canvas id="canvas"></canvas>
 <script type="module">
     import init from "./pkg/client_lib.js";
     init();
 </script>
 <script>
-    window.addEventListener("beforeunload", () => {
-        navigator.sendBeacon("/__shutdown");
-    });
+    // window.addEventListener("beforeunload", () => {
+    //     navigator.sendBeacon("/__shutdown");
+    // });
 </script>
