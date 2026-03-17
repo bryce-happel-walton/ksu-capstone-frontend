@@ -5,25 +5,32 @@ use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
 use axum::http::{Response, StatusCode, Uri, header};
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
+use futures_util::StreamExt;
 use include_dir::{Dir, include_dir};
 use mime_guess::MimeGuess;
 use std::{net::SocketAddr, sync::Arc};
-use tokio::sync::{Mutex, oneshot};
+use tokio::sync::{Mutex, broadcast, oneshot};
+use tokio_tungstenite::connect_async;
 
 const WEB: Dir = include_dir!("$OUT_DIR/web");
 
 #[derive(Clone)]
 struct AppState {
     shutdown_tx: Arc<Mutex<Option<oneshot::Sender<()>>>>,
+    esp_tx: broadcast::Sender<shared::EspData>,
 }
 
 #[tokio::main]
 async fn main() {
     let (shutdown_tx, shutdown_rx) = oneshot::channel::<()>();
+    let (esp_tx, _) = broadcast::channel::<shared::EspData>(16);
 
     let state = AppState {
         shutdown_tx: Arc::new(Mutex::new(Some(shutdown_tx))),
+        esp_tx: esp_tx.clone(),
     };
+
+    tokio::spawn(esp_ws_task(esp_tx));
 
     let app = Router::new()
         .route("/__shutdown", post(shutdown))
@@ -48,6 +55,37 @@ async fn main() {
         .unwrap();
 }
 
+async fn esp_ws_task(tx: broadcast::Sender<shared::EspData>) {
+    loop {
+        eprintln!("Connecting to ESP...");
+        match connect_async("ws://192.168.4.1/data").await {
+            Ok((mut ws, _)) => {
+                eprintln!("Connected to ESP");
+                while let Some(msg) = ws.next().await {
+                    eprintln!("Received: {:?}", msg);
+                    if let Ok(tokio_tungstenite::tungstenite::Message::Binary(bytes)) = msg {
+                        eprintln!(
+                            "Binary len: {}, expected: {}",
+                            bytes.len(),
+                            std::mem::size_of::<shared::EspData>()
+                        );
+                        if bytes.len() == std::mem::size_of::<shared::EspData>() {
+                            let data: shared::EspData =
+                                unsafe { std::ptr::read(bytes.as_ptr() as *const _) };
+                            let _ = tx.send(data);
+                        }
+                    }
+                }
+                eprintln!("ESP disconnected");
+            }
+            Err(e) => {
+                eprintln!("ESP WebSocket connection failed: {e}, retrying in 2s");
+                tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+            }
+        }
+    }
+}
+
 async fn shutdown(State(state): State<AppState>) -> &'static str {
     if let Some(tx) = state.shutdown_tx.lock().await.take() {
         let _ = tx.send(());
@@ -58,7 +96,6 @@ async fn shutdown(State(state): State<AppState>) -> &'static str {
 async fn serve_embedded(uri: Uri) -> Response<Body> {
     let path = uri.path();
 
-    // default route
     let file_path = if path == "/" {
         "index.html"
     } else {
@@ -69,7 +106,6 @@ async fn serve_embedded(uri: Uri) -> Response<Body> {
         Some(file) => {
             let contents = file.contents();
             let mime = MimeGuess::from_path(file_path).first_or_octet_stream();
-
             Response::builder()
                 .status(StatusCode::OK)
                 .header(header::CONTENT_TYPE, mime.as_ref())
@@ -84,47 +120,27 @@ async fn serve_embedded(uri: Uri) -> Response<Body> {
     }
 }
 
-async fn handle_socket(mut socket: WebSocket) {
-    let mut increment = 0;
-    let mut boolcrement = false;
+async fn handle_socket(mut socket: WebSocket, esp_tx: broadcast::Sender<shared::EspData>) {
+    let mut rx = esp_tx.subscribe();
     loop {
-        let mut data = shared::EspData::default();
-        data.hello = "world!".to_owned();
-        data.beep = increment;
-        data.boop = boolcrement;
-
-        increment += 1;
-        boolcrement = !boolcrement;
-
-        let json = serde_json::to_string(&data).unwrap();
-        if socket.send(Message::Text(json.into())).await.is_err() {
-            break;
+        match rx.recv().await {
+            Ok(data) => {
+                let json = serde_json::to_string(&data).unwrap();
+                if socket.send(Message::Text(json.into())).await.is_err() {
+                    break;
+                }
+            }
+            Err(broadcast::error::RecvError::Lagged(_)) => continue,
+            Err(_) => break,
         }
-        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
     }
 }
 
-async fn websocket_handler(web_socket: WebSocketUpgrade) -> impl IntoResponse {
+async fn websocket_handler(
+    web_socket: WebSocketUpgrade,
+    State(state): State<AppState>,
+) -> impl IntoResponse {
     web_socket
         .on_failed_upgrade(|error| println!("Error upgrading websocket: {}", error))
-        .on_upgrade(handle_socket)
-}
-
-async fn get_raw_esp_data() -> axum::http::Response<String> {
-    match reqwest::get(shared::ESP_DATA_DIR).await {
-        Ok(res) => match res.text().await {
-            Ok(body) => Response::builder()
-                .status(StatusCode::OK)
-                .body(body)
-                .unwrap(),
-            Err(_) => Response::builder()
-                .status(StatusCode::BAD_REQUEST)
-                .body("Failed to read response".to_string())
-                .unwrap(),
-        },
-        Err(_) => Response::builder()
-            .status(StatusCode::BAD_GATEWAY)
-            .body("Failed to reach network".to_string())
-            .unwrap(),
-    }
+        .on_upgrade(move |socket| handle_socket(socket, state.esp_tx))
 }

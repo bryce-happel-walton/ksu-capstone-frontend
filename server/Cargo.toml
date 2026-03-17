@@ -9,12 +9,14 @@
     serde      = { workspace = true }
     serde_json = { workspace = true }
 
-    tokio       = { version = "*", features = ["full"] }
-    reqwest     = { version = "*", features = ["json"] }
-    axum        = { version = "*", features = ["ws"] }
-    mime_guess  = "*"
-    include_dir = "*"
-    webbrowser  = "*"
+    tokio             = { version = "*", features = ["full"] }
+    tokio-tungstenite = "*"
+    futures-util      = "*"
+    reqwest           = { version = "*", features = ["json"] }
+    axum              = { version = "*", features = ["ws"] }
+    mime_guess        = "*"
+    include_dir       = "*"
+    webbrowser        = "*"
 
 [build-dependencies]
     anyhow                   = "*"
