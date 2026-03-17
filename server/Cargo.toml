@@ -5,9 +5,7 @@
     build   = "build.rs"
 
 [dependencies]
-    shared     = { workspace = true }
-    serde      = { workspace = true }
-    serde_json = { workspace = true }
+    shared = { workspace = true }
 
     tokio             = { version = "*", features = ["full"] }
     tokio-tungstenite = "*"

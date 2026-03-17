@@ -3,7 +3,7 @@ use std::sync::{LazyLock, Mutex};
 use slint::{ModelRc, StandardListViewItem, TableColumn, VecModel, Weak};
 use wasm_bindgen::prelude::*;
 use web_sys::{
-    ErrorEvent, MessageEvent, WebSocket, console,
+    MessageEvent, WebSocket,
     wasm_bindgen::{JsCast, prelude::Closure},
 };
 
@@ -14,14 +14,9 @@ pub fn main() {
     let window = web_sys::window().unwrap();
     let port = window.location().port().unwrap();
     let ws = WebSocket::new(&format!("ws://127.0.0.1:{port}/{}", shared::WEB_SOCKET_DIR)).unwrap();
+    ws.set_binary_type(web_sys::BinaryType::Arraybuffer);
 
     let main_window = MainWindow::new().unwrap();
-
-    let onerror_callback = Closure::<dyn FnMut(_)>::new(move |e: ErrorEvent| {
-        console::log_1(&format!("error event: {e:?}").into());
-    });
-    ws.set_onerror(Some(onerror_callback.as_ref().unchecked_ref()));
-    onerror_callback.forget();
 
     static CURRENT_DATA: LazyLock<Mutex<Vec<Vec<StandardListViewItem>>>> =
         LazyLock::new(|| Mutex::new(Vec::new()));
@@ -29,27 +24,32 @@ pub fn main() {
 
     let main_window_weak = main_window.as_weak();
     let onmessage_callback = Closure::<dyn FnMut(_)>::new(move |event: MessageEvent| {
-        if let Some(txt) = event.data().as_string() {
-            if let Ok(esp_data) = serde_json::from_str::<shared::EspData>(&txt) {
+        if let Ok(buf) = event.data().dyn_into::<js_sys::ArrayBuffer>() {
+            let bytes = js_sys::Uint8Array::new(&buf).to_vec();
+            if let Some(esp_data) = shared::TestData::from_bytes(&bytes) {
+                let hello = shared::TestData::str_from_chars(&esp_data.hello);
+                let beep = esp_data.beep;
+                let boop = esp_data.boop;
+
                 if let Some(handle) = main_window_weak.upgrade() {
                     let test_data = handle.global::<TestData>();
 
                     let mut data = CURRENT_DATA.lock().unwrap();
                     data.push(vec![
                         {
-                            let mut hello_view_item = StandardListViewItem::default();
-                            hello_view_item.text = esp_data.hello.into();
-                            hello_view_item
+                            let mut item = StandardListViewItem::default();
+                            item.text = hello.into();
+                            item
                         },
                         {
-                            let mut beep_view_item = StandardListViewItem::default();
-                            beep_view_item.text = format!("{}", esp_data.beep).into();
-                            beep_view_item
+                            let mut item = StandardListViewItem::default();
+                            item.text = format!("{}", beep).into();
+                            item
                         },
                         {
-                            let mut boop_view_item = StandardListViewItem::default();
-                            boop_view_item.text = format!("{}", esp_data.boop).into();
-                            boop_view_item
+                            let mut item = StandardListViewItem::default();
+                            item.text = format!("{}", boop).into();
+                            item
                         },
                     ]);
 
@@ -70,12 +70,6 @@ pub fn main() {
     });
     ws.set_onmessage(Some(onmessage_callback.as_ref().unchecked_ref()));
     onmessage_callback.forget();
-
-    let onerror = Closure::wrap(Box::new(move |event: web_sys::ErrorEvent| {
-        console::log_1(&format!("WS error: {:?}", event.message()).into());
-    }) as Box<dyn FnMut(_)>);
-    ws.set_onerror(Some(onerror.as_ref().unchecked_ref()));
-    onerror.forget();
 
     let inner_width = window.inner_width().unwrap().as_f64().unwrap() as u32;
     let inner_height = window.inner_height().unwrap().as_f64().unwrap() as u32;

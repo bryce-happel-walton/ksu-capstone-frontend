@@ -17,13 +17,13 @@ const WEB: Dir = include_dir!("$OUT_DIR/web");
 #[derive(Clone)]
 struct AppState {
     shutdown_tx: Arc<Mutex<Option<oneshot::Sender<()>>>>,
-    esp_tx: broadcast::Sender<shared::EspData>,
+    esp_tx: broadcast::Sender<shared::TestData>,
 }
 
 #[tokio::main]
 async fn main() {
     let (shutdown_tx, shutdown_rx) = oneshot::channel::<()>();
-    let (esp_tx, _) = broadcast::channel::<shared::EspData>(16);
+    let (esp_tx, _) = broadcast::channel::<shared::TestData>(16);
 
     let state = AppState {
         shutdown_tx: Arc::new(Mutex::new(Some(shutdown_tx))),
@@ -55,25 +55,16 @@ async fn main() {
         .unwrap();
 }
 
-async fn esp_ws_task(tx: broadcast::Sender<shared::EspData>) {
+async fn esp_ws_task(tx: broadcast::Sender<shared::TestData>) {
     loop {
         eprintln!("Connecting to ESP...");
-        match connect_async("ws://192.168.4.1/data").await {
+        match connect_async(shared::ESP_DATA_DIR).await {
             Ok((mut ws, _)) => {
                 eprintln!("Connected to ESP");
                 while let Some(msg) = ws.next().await {
-                    eprintln!("Received: {:?}", msg);
                     if let Ok(tokio_tungstenite::tungstenite::Message::Binary(bytes)) = msg {
-                        eprintln!(
-                            "Binary len: {}, expected: {}",
-                            bytes.len(),
-                            std::mem::size_of::<shared::EspData>()
-                        );
-                        if bytes.len() == std::mem::size_of::<shared::EspData>() {
-                            let data: shared::EspData =
-                                unsafe { std::ptr::read(bytes.as_ptr() as *const _) };
-                            let _ = tx.send(data);
-                        }
+                        // We can just pass the bytes directly, but it is easier to follow the types this way
+                        shared::TestData::from_bytes(&bytes).map(|data| tx.send(data));
                     }
                 }
                 eprintln!("ESP disconnected");
@@ -120,13 +111,16 @@ async fn serve_embedded(uri: Uri) -> Response<Body> {
     }
 }
 
-async fn handle_socket(mut socket: WebSocket, esp_tx: broadcast::Sender<shared::EspData>) {
+async fn handle_socket(mut socket: WebSocket, esp_tx: broadcast::Sender<shared::TestData>) {
     let mut rx = esp_tx.subscribe();
     loop {
         match rx.recv().await {
             Ok(data) => {
-                let json = serde_json::to_string(&data).unwrap();
-                if socket.send(Message::Text(json.into())).await.is_err() {
+                if socket
+                    .send(Message::Binary(data.to_bytes().into()))
+                    .await
+                    .is_err()
+                {
                     break;
                 }
             }

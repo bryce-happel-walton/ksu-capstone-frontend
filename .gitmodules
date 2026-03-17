@@ -1,0 +1,3 @@
+[submodule "shared/ksu-capstone-embedded"]
+	path = shared/ksu-capstone-embedded
+	url = https://github.com/bryce-happel-walton/ksu-capstone-embedded.git

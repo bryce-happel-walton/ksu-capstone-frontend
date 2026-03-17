@@ -3,6 +3,4 @@
     resolver = "3"
 
     [workspace.dependencies]
-        shared     = { path = "shared" }
-        serde      = { version = "*", features = ["std", "derive"] }
-        serde_json = { version = "*" }
+        shared = { path = "shared" }

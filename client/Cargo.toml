@@ -9,15 +9,14 @@
     name       = "client_lib"
 
 [dependencies]
-    shared     = { workspace = true }
-    serde      = { workspace = true }
-    serde_json = { workspace = true }
+    shared = { workspace = true }
 
     tokio        = { version = "*", default-features = false, features = ["sync", "rt", "macros", "time"] }
     slint        = "*"
     async-compat = "*"
-    web-sys      = { version = "*", features = ["WebSocket", "MessageEvent", "ErrorEvent", "Window", "Location", "console", "UiEvent"] }
+    web-sys      = { version = "*", features = ["WebSocket", "MessageEvent", "ErrorEvent", "Window", "Location", "console", "UiEvent", "BinaryType"] }
     wasm-bindgen = { version = "*" }
+    js-sys       = { version = "*" }
 
 [build-dependencies]
     anyhow      = "*"
