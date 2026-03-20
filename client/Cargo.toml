@@ -17,6 +17,7 @@
     web-sys      = { version = "*", features = ["WebSocket", "MessageEvent", "ErrorEvent", "Window", "Location", "console", "UiEvent", "BinaryType"] }
     wasm-bindgen = { version = "*" }
     js-sys       = { version = "*" }
+    image        = { version = "*", default-features = false, features = ["jpeg"] }
 
 [build-dependencies]
     anyhow      = "*"

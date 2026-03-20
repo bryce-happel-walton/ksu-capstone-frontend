@@ -11,18 +11,33 @@ slint::include_modules!();
 
 #[wasm_bindgen(start)]
 pub fn main() {
-    let window = web_sys::window().unwrap();
-    let port = window.location().port().unwrap();
-    let ws = WebSocket::new(&format!("ws://127.0.0.1:{port}/{}", shared::WEB_SOCKET_DIR)).unwrap();
-    ws.set_binary_type(web_sys::BinaryType::Arraybuffer);
-
     let main_window = MainWindow::new().unwrap();
+
+    handle_test_data(main_window.as_weak());
+    handle_image_stream(main_window.as_weak());
+    handle_window(main_window.as_weak());
+
+    main_window.show().unwrap();
+
+    slint::run_event_loop().unwrap();
+}
+
+fn handle_test_data(app_window: Weak<MainWindow>) {
+    let window = web_sys::window().unwrap();
+    let test_data_ws = WebSocket::new(&format!(
+        "ws://{}:{}/{}",
+        shared::SERVER_IP,
+        window.location().port().unwrap(),
+        shared::SERVER_WS_TEST_DATA_DIR
+    ))
+    .unwrap();
+    test_data_ws.set_binary_type(web_sys::BinaryType::Arraybuffer);
 
     static CURRENT_DATA: LazyLock<Mutex<Vec<Vec<StandardListViewItem>>>> =
         LazyLock::new(|| Mutex::new(Vec::new()));
-    set_data_columns(main_window.as_weak());
+    set_data_columns(app_window.clone());
 
-    let main_window_weak = main_window.as_weak();
+    let main_window_weak = app_window.clone();
     let onmessage_callback = Closure::<dyn FnMut(_)>::new(move |event: MessageEvent| {
         if let Ok(buf) = event.data().dyn_into::<js_sys::ArrayBuffer>() {
             let bytes = js_sys::Uint8Array::new(&buf).to_vec();
@@ -68,31 +83,76 @@ pub fn main() {
             }
         }
     });
-    ws.set_onmessage(Some(onmessage_callback.as_ref().unchecked_ref()));
+    test_data_ws.set_onmessage(Some(onmessage_callback.as_ref().unchecked_ref()));
     onmessage_callback.forget();
+}
 
-    let inner_width = window.inner_width().unwrap().as_f64().unwrap() as u32;
-    let inner_height = window.inner_height().unwrap().as_f64().unwrap() as u32;
-    main_window
-        .window()
-        .set_size(slint::PhysicalSize::new(inner_width, inner_height));
+fn handle_image_stream(app_window: Weak<MainWindow>) {
+    let window = web_sys::window().unwrap();
+    let test_data_ws = WebSocket::new(&format!(
+        "ws://{}:{}/{}",
+        shared::SERVER_IP,
+        window.location().port().unwrap(),
+        shared::SERVER_WS_IMAGE_STREAM_DIR
+    ))
+    .unwrap();
+    test_data_ws.set_binary_type(web_sys::BinaryType::Arraybuffer);
 
-    let main_window_weak = main_window.as_weak();
-    let on_resize = Closure::<dyn FnMut(_)>::new(move |_event: web_sys::UiEvent| {
-        let window = web_sys::window().unwrap();
-        let w = window.inner_width().unwrap().as_f64().unwrap() as u32;
-        let h = window.inner_height().unwrap().as_f64().unwrap() as u32;
-        if let Some(handle) = main_window_weak.upgrade() {
-            handle.window().set_size(slint::PhysicalSize::new(w, h));
+    let main_window_weak = app_window.clone();
+    let onmessage_callback = Closure::<dyn FnMut(_)>::new(move |event: MessageEvent| {
+        if let Ok(buf) = event.data().dyn_into::<js_sys::ArrayBuffer>() {
+            let bytes = js_sys::Uint8Array::new(&buf).to_vec();
+
+            if let Some(rgba) =
+                image::load_from_memory_with_format(&bytes, image::ImageFormat::Jpeg)
+                    .ok()
+                    .map(|img| img.to_rgba8())
+            {
+                let buf = slint::SharedPixelBuffer::<slint::Rgba8Pixel>::clone_from_slice(
+                    rgba.as_raw(),
+                    rgba.width(),
+                    rgba.height(),
+                );
+                if let Some(handle) = main_window_weak.upgrade() {
+                    handle
+                        .global::<ImageStream>()
+                        .set_image(slint::Image::from_rgba8(buf));
+                }
+            }
         }
+    });
+    test_data_ws.set_onmessage(Some(onmessage_callback.as_ref().unchecked_ref()));
+    onmessage_callback.forget();
+}
+
+fn handle_window(app_window: Weak<MainWindow>) {
+    let window = web_sys::window().unwrap();
+    let weak_app_window = app_window.clone();
+    let initial_size_callback = Closure::<dyn FnMut(f64)>::once(move |_: f64| {
+        update_window_size(weak_app_window);
+    });
+    window
+        .request_animation_frame(initial_size_callback.as_ref().unchecked_ref())
+        .unwrap();
+    initial_size_callback.forget();
+
+    let main_window_weak = app_window.clone();
+    let on_resize = Closure::<dyn FnMut(_)>::new(move |_event: web_sys::UiEvent| {
+        update_window_size(main_window_weak.clone());
     });
     window
         .add_event_listener_with_callback("resize", on_resize.as_ref().unchecked_ref())
         .unwrap();
     on_resize.forget();
+}
 
-    main_window.show().unwrap();
-    slint::run_event_loop().unwrap();
+fn update_window_size(app_window: Weak<MainWindow>) {
+    let window = web_sys::window().unwrap();
+    let w = window.inner_width().unwrap().as_f64().unwrap() as u32;
+    let h = window.inner_height().unwrap().as_f64().unwrap() as u32;
+    if let Some(handle) = app_window.upgrade() {
+        handle.window().set_size(slint::PhysicalSize::new(w, h));
+    }
 }
 
 fn set_data_columns(handle: Weak<MainWindow>) {

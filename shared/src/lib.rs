@@ -1,14 +1,22 @@
-pub const ESP_DATA_DIR: &'static str = "ws://192.168.4.1/data";
-pub const WEB_SOCKET_DIR: &'static str = "web_socket";
+pub const ESP_IP: &'static str = "192.168.4.1";
+
+pub const SERVER_IP: &'static str = "127.0.0.1";
+pub const SERVER_WS_TEST_DATA_DIR: &'static str = "test_data";
+pub const SERVER_WS_IMAGE_STREAM_DIR: &'static str = "image_stream";
 
 #[allow(non_upper_case_globals)]
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
-mod bindings {
+pub mod bindings {
     include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 }
 
 pub use bindings::*;
+
+pub fn cstr_to_str(bytes: &[u8]) -> &str {
+    let len = bytes.iter().position(|&b| b == 0).unwrap_or(bytes.len());
+    std::str::from_utf8(&bytes[..len]).unwrap_or("")
+}
 
 impl TestData {
     pub fn from_bytes(bytes: &[u8]) -> Option<Self> {

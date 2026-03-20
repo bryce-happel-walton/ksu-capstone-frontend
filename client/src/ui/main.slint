@@ -5,13 +5,21 @@ export global TestData {
     in property <[[StandardListViewItem]]> test-packets;
 }
 
+export global ImageStream {
+    in property <image> image;
+}
+
 export component MainWindow inherits Window {
-    horizontal-stretch: 1;
-    vertical-stretch: 1;
-    StandardTableView {
-        width: 100%;
-        height: 100%;
-        columns: TestData.test-packet-columns;
-        rows: TestData.test-packets;
+    HorizontalLayout {
+        StandardTableView {
+            columns: TestData.test-packet-columns;
+            rows: TestData.test-packets;
+        }
+
+        Image {
+            width: 50%;
+            height: 50%;
+            source: ImageStream.image;
+        }
     }
 }
