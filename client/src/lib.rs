@@ -156,8 +156,9 @@ fn handle_window(app_window: Weak<MainWindow>) {
 
 fn update_window_size(app_window: Weak<MainWindow>) {
     let window = web_sys::window().unwrap();
-    let w = window.inner_width().unwrap().as_f64().unwrap() as u32;
-    let h = window.inner_height().unwrap().as_f64().unwrap() as u32;
+    let dpr = window.device_pixel_ratio();
+    let w = (window.inner_width().unwrap().as_f64().unwrap() * dpr) as u32;
+    let h = (window.inner_height().unwrap().as_f64().unwrap() * dpr) as u32;
     if let Some(handle) = app_window.upgrade() {
         handle.window().set_size(slint::PhysicalSize::new(w, h));
     }

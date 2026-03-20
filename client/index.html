@@ -1,15 +1,30 @@
 <!DOCTYPE html>
-<style>
-    body {
-        margin: 0;
-    }
+<html>
 
-    canvas {
-        display: block;
-    }
-</style>
-<canvas id="canvas"></canvas>
-<script type="module">
-    import init from "./pkg/client_lib.js";
-    init();
-</script>
+<head>
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: black;
+            width: 100%;
+            height: 100%;
+        }
+
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="canvas"></canvas>
+    <script type="module">
+        import init from "./pkg/client_lib.js";
+        init();
+    </script>
+</body>
+
+</html>
