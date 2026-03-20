@@ -23,12 +23,11 @@ pub fn main() {
 }
 
 fn handle_test_data(app_window: Weak<MainWindow>) {
-    let window = web_sys::window().unwrap();
     let test_data_ws = WebSocket::new(&format!(
         "ws://{}:{}/{}",
-        shared::SERVER_IP,
-        window.location().port().unwrap(),
-        shared::SERVER_WS_TEST_DATA_DIR
+        shared::ESP_IP,
+        shared::TEST_DATA_PORT,
+        shared::cstr_to_str(shared::TEST_DATA_URI)
     ))
     .unwrap();
     test_data_ws.set_binary_type(web_sys::BinaryType::Arraybuffer);
@@ -41,45 +40,52 @@ fn handle_test_data(app_window: Weak<MainWindow>) {
     let onmessage_callback = Closure::<dyn FnMut(_)>::new(move |event: MessageEvent| {
         if let Ok(buf) = event.data().dyn_into::<js_sys::ArrayBuffer>() {
             let bytes = js_sys::Uint8Array::new(&buf).to_vec();
+            web_sys::console::log_1(&format!("[test_data] received {} bytes", bytes.len()).into());
+
             if let Some(esp_data) = shared::TestData::from_bytes(&bytes) {
-                let hello = shared::TestData::str_from_chars(&esp_data.hello);
-                let beep = esp_data.beep;
-                let boop = esp_data.boop;
+                web_sys::console::log_1(&format!("[test_data] {esp_data:?}").into());
 
-                if let Some(handle) = main_window_weak.upgrade() {
-                    let test_data = handle.global::<TestData>();
+                let main_window_weak = main_window_weak.clone();
+                let _ = slint::invoke_from_event_loop(move || {
+                    if let Some(handle) = main_window_weak.upgrade() {
+                        let test_data = handle.global::<TestData>();
 
-                    let mut data = CURRENT_DATA.lock().unwrap();
-                    data.push(vec![
-                        {
-                            let mut item = StandardListViewItem::default();
-                            item.text = hello.into();
-                            item
-                        },
-                        {
-                            let mut item = StandardListViewItem::default();
-                            item.text = format!("{}", beep).into();
-                            item
-                        },
-                        {
-                            let mut item = StandardListViewItem::default();
-                            item.text = format!("{}", boop).into();
-                            item
-                        },
-                    ]);
+                        let hello = shared::TestData::str_from_chars(&esp_data.hello);
+                        let beep = esp_data.beep;
+                        let boop = esp_data.boop;
 
-                    let model: ModelRc<ModelRc<StandardListViewItem>> =
-                        ModelRc::new(VecModel::from(
-                            data.iter()
-                                .map(|row| {
-                                    ModelRc::new(VecModel::from(row.clone()))
-                                        as ModelRc<StandardListViewItem>
-                                })
-                                .collect::<Vec<_>>(),
-                        ));
+                        let mut data = CURRENT_DATA.lock().unwrap();
+                        data.push(vec![
+                            {
+                                let mut item = StandardListViewItem::default();
+                                item.text = hello.into();
+                                item
+                            },
+                            {
+                                let mut item = StandardListViewItem::default();
+                                item.text = format!("{}", beep).into();
+                                item
+                            },
+                            {
+                                let mut item = StandardListViewItem::default();
+                                item.text = format!("{}", boop).into();
+                                item
+                            },
+                        ]);
 
-                    test_data.set_test_packets(model);
-                }
+                        let model: ModelRc<ModelRc<StandardListViewItem>> =
+                            ModelRc::new(VecModel::from(
+                                data.iter()
+                                    .map(|row| {
+                                        ModelRc::new(VecModel::from(row.clone()))
+                                            as ModelRc<StandardListViewItem>
+                                    })
+                                    .collect::<Vec<_>>(),
+                            ));
+
+                        test_data.set_test_packets(model);
+                    }
+                });
             }
         }
     });
@@ -88,12 +94,11 @@ fn handle_test_data(app_window: Weak<MainWindow>) {
 }
 
 fn handle_image_stream(app_window: Weak<MainWindow>) {
-    let window = web_sys::window().unwrap();
     let test_data_ws = WebSocket::new(&format!(
         "ws://{}:{}/{}",
-        shared::SERVER_IP,
-        window.location().port().unwrap(),
-        shared::SERVER_WS_IMAGE_STREAM_DIR
+        shared::ESP_IP,
+        shared::IMAGE_STREAM_PORT,
+        shared::cstr_to_str(shared::IMAGE_STREAM_URI)
     ))
     .unwrap();
     test_data_ws.set_binary_type(web_sys::BinaryType::Arraybuffer);
@@ -113,11 +118,14 @@ fn handle_image_stream(app_window: Weak<MainWindow>) {
                     rgba.width(),
                     rgba.height(),
                 );
-                if let Some(handle) = main_window_weak.upgrade() {
-                    handle
-                        .global::<ImageStream>()
-                        .set_image(slint::Image::from_rgba8(buf));
-                }
+                let main_window_weak = main_window_weak.clone();
+                let _ = slint::invoke_from_event_loop(move || {
+                    if let Some(handle) = main_window_weak.upgrade() {
+                        handle
+                            .global::<ImageStream>()
+                            .set_image(slint::Image::from_rgba8(buf));
+                    }
+                });
             }
         }
     });
