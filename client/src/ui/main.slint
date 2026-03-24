@@ -1,25 +1,92 @@
-import { StandardTableView } from "std-widgets.slint";
+import { StandardTableView, ComboBox, LineEdit} from "std-widgets.slint";
+
 
 export global TestData {
-    in property <[TableColumn]> test-packet-columns;
-    in property <[[StandardListViewItem]]> test-packets;
+   in property <[TableColumn]> test-packet-columns;
+   in property <[[StandardListViewItem]]> test-packets;
 }
+
 
 export global ImageStream {
-    in property <image> image;
+   in property <image> image;
 }
 
-export component MainWindow inherits Window {
-    HorizontalLayout {
-        StandardTableView {
-            columns: TestData.test-packet-columns;
-            rows: TestData.test-packets;
-        }
 
-        Image {
-            width: 50%;
-            height: 50%;
-            source: ImageStream.image;
-        }
-    }
+export component MainWindow inherits Window {
+MenuBar {
+       Menu {
+           title: @tr("File");
+           MenuItem {
+               title: @tr("New");
+               activated => { file-new(); }
+           }
+           MenuItem {
+               title: @tr("Open");
+               activated => { file-open(); }
+           }
+       }
+       Menu {
+           title: @tr("Attributions");
+           MenuItem {
+               title: @tr("View Attributions");
+               activated => { show-attributions(); }
+           }
+       }
+   }
+
+
+   callback file-new();
+   callback file-open();
+   callback show-attributions();
+
+
+VerticalLayout {
+   HorizontalLayout {
+       StandardTableView {
+           columns: TestData.test-packet-columns;
+           rows: TestData.test-packets;
+       }
+ VerticalLayout {
+                   padding: 10px;
+                   spacing: 6px;
+
+
+                   Text { text: "Type"; }
+                   ComboBox { model: ["Option 1", "Option 2"]; }
+
+
+                   Text { text: "Name"; }
+                   LineEdit { }
+
+
+                   Text { text: "Frame Size"; }
+                   ComboBox { model: ["QVGA", "VGA", "SVGA", "UXGA"]; }
+
+
+                   Text { text: "JPEG Quality"; }
+                   LineEdit { }
+
+
+                   Text { text: "Brightness"; }
+                   LineEdit { }
+
+
+                   Text { text: "Contrast"; }
+                   LineEdit { }
+
+
+                   Text { text: "Saturation"; }
+                   LineEdit { }
+
+
+                   Text { text: "Sharpness"; }
+                   LineEdit { }
+               }
+                Image {
+                    width: 50%;
+                    height: 50%;
+                    source: ImageStream.image;
+            }
+       }
+   }
 }
