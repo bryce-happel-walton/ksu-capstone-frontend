@@ -14,10 +14,10 @@
     tokio        = { version = "*", default-features = false, features = ["sync", "rt", "macros", "time"] }
     slint        = "*"
     async-compat = "*"
-    web-sys      = { version = "*", features = ["WebSocket", "MessageEvent", "ErrorEvent", "Window", "Location", "console", "UiEvent", "BinaryType"] }
-    wasm-bindgen = { version = "*" }
-    js-sys       = { version = "*" }
-    image        = { version = "*", default-features = false, features = ["jpeg"] }
+    web-sys               = { version = "*", features = ["WebSocket", "MessageEvent", "ErrorEvent", "Window", "Location", "console", "UiEvent", "BinaryType", "Blob", "BlobPropertyBag", "ImageBitmap", "HtmlCanvasElement", "CanvasRenderingContext2d", "ImageData", "Document", "Element"] }
+    wasm-bindgen          = { version = "*" }
+    wasm-bindgen-futures  = { version = "*" }
+    js-sys                = { version = "*" }
 
 [build-dependencies]
     anyhow      = "*"

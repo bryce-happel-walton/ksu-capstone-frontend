@@ -888,7 +888,6 @@ version = "0.2.0"
 dependencies = [
  "anyhow",
  "async-compat",
- "image",
  "js-sys",
  "json",
  "shared",
@@ -896,6 +895,7 @@ dependencies = [
  "slint-build",
  "tokio",
  "wasm-bindgen",
+ "wasm-bindgen-futures",
  "web-sys",
 ]
 

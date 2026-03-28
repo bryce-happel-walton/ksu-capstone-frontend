@@ -1,5 +1,13 @@
-import { StandardTableView, ComboBox, LineEdit } from "std-widgets.slint";
+import {
+    StandardTableView,
+    ComboBox,
+    LineEdit,
+    Button,
+} from "std-widgets.slint";
 
+export global Sender {
+    callback test-send-data();
+}
 
 export global TestData {
     in property <[TableColumn]> test-packet-columns;
@@ -11,6 +19,19 @@ export global ImageStream {
     in property <image> image;
 }
 
+component SettingBox inherits VerticalLayout {
+    in property <string> label;
+
+    alignment: start;
+
+    i-label := Text {
+        text: root.label;
+    }
+
+    Rectangle {
+        @children
+    }
+}
 
 export component MainWindow inherits Window {
     MenuBar {
@@ -48,71 +69,75 @@ export component MainWindow inherits Window {
 
     VerticalLayout {
         HorizontalLayout {
-            StandardTableView {
-                columns: TestData.test-packet-columns;
-                rows: TestData.test-packets;
-            }
+            spacing: 10px;
 
             VerticalLayout {
                 padding: 10px;
                 spacing: 12px;
 
-                Text {
-                    text: "Type";
+                SettingBox {
+                    label: "Type";
+                    ComboBox {
+                        model: ["Option 1", "Option 2"];
+                    }
                 }
 
-                ComboBox {
-                    model: ["Option 1", "Option 2"];
+                SettingBox {
+                    label: "Name";
+                    LineEdit { }
                 }
 
-                Text {
-                    text: "Name";
+                SettingBox {
+                    label: "Frame Size";
+
+                    ComboBox {
+                        model: ["QVGA", "VGA", "SVGA", "UXGA"];
+                    }
                 }
 
-                LineEdit { }
-
-                Text {
-                    text: "Frame Size";
+                SettingBox {
+                    label: "JPEG Quality";
+                    LineEdit { }
                 }
 
-                ComboBox {
-                    model: ["QVGA", "VGA", "SVGA", "UXGA"];
+                SettingBox {
+                    label: "Brightness";
+                    LineEdit { }
                 }
 
-                Text {
-                    text: "JPEG Quality";
+                SettingBox {
+                    label: "Contrast";
+                    LineEdit { }
                 }
 
-                LineEdit { }
-
-                Text {
-                    text: "Brightness";
+                SettingBox {
+                    label: "Saturation";
+                    LineEdit { }
                 }
 
-                LineEdit { }
-
-                Text {
-                    text: "Contrast";
+                SettingBox {
+                    label: "Sharpness";
+                    LineEdit { }
                 }
-
-                LineEdit { }
-
-                Text {
-                    text: "Saturation";
-                }
-
-                LineEdit { }
-
-                Text {
-                    text: "Sharpness";
-                }
-
-                LineEdit { }
             }
 
-            Image {
+            VerticalLayout {
+                Rectangle {
+                    Button {
+                        text: "TEST WS SEND";
+
+                        clicked => Sender.test-send-data();
+                    }
+                }
+            }
+
+            StandardTableView {
+                columns: TestData.test-packet-columns;
+                rows: TestData.test-packets;
+            }
+
+            i-stream-image := Image {
                 width: 50%;
-                height: 50%;
                 source: ImageStream.image;
             }
         }

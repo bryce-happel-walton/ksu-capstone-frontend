@@ -1,3 +1,4 @@
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{LazyLock, Mutex};
 
 use slint::{ModelRc, StandardListViewItem, TableColumn, VecModel, Weak};
@@ -94,42 +95,88 @@ fn handle_test_data(app_window: Weak<MainWindow>) {
 }
 
 fn handle_image_stream(app_window: Weak<MainWindow>) {
-    let test_data_ws = WebSocket::new(&format!(
+    static PROCESSING: AtomicBool = AtomicBool::new(false);
+
+    let ws = WebSocket::new(&format!(
         "ws://{}:{}/{}",
         shared::ESP_IP,
         shared::IMAGE_STREAM_PORT,
         shared::cstr_to_str(shared::IMAGE_STREAM_URI)
     ))
     .unwrap();
-    test_data_ws.set_binary_type(web_sys::BinaryType::Arraybuffer);
+    ws.set_binary_type(web_sys::BinaryType::Arraybuffer);
 
     let main_window_weak = app_window.clone();
     let onmessage_callback = Closure::<dyn FnMut(_)>::new(move |event: MessageEvent| {
-        if let Ok(buf) = event.data().dyn_into::<js_sys::ArrayBuffer>() {
-            let bytes = js_sys::Uint8Array::new(&buf).to_vec();
-
-            if let Some(rgba) =
-                image::load_from_memory_with_format(&bytes, image::ImageFormat::Jpeg)
-                    .ok()
-                    .map(|img| img.to_rgba8())
-            {
-                let buf = slint::SharedPixelBuffer::<slint::Rgba8Pixel>::clone_from_slice(
-                    rgba.as_raw(),
-                    rgba.width(),
-                    rgba.height(),
-                );
-                let main_window_weak = main_window_weak.clone();
-                let _ = slint::invoke_from_event_loop(move || {
-                    if let Some(handle) = main_window_weak.upgrade() {
-                        handle
-                            .global::<ImageStream>()
-                            .set_image(slint::Image::from_rgba8(buf));
-                    }
-                });
-            }
+        if PROCESSING
+            .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+            .is_err()
+        {
+            // still processing previous frame, ignore incoming data
+            return;
         }
+
+        let Ok(buf) = event.data().dyn_into::<js_sys::ArrayBuffer>() else {
+            PROCESSING.store(false, Ordering::SeqCst);
+            return;
+        };
+
+        let uint8 = js_sys::Uint8Array::new(&buf);
+        let parts = js_sys::Array::new();
+        parts.push(&uint8);
+        let blob_opts = web_sys::BlobPropertyBag::new();
+        blob_opts.set_type("image/jpeg");
+        let blob =
+            web_sys::Blob::new_with_u8_array_sequence_and_options(&parts, &blob_opts).unwrap();
+
+        // make the browser decode the jpeg
+        let promise = web_sys::window()
+            .unwrap()
+            .create_image_bitmap_with_blob(&blob)
+            .unwrap();
+
+        let main_window_weak = main_window_weak.clone();
+        wasm_bindgen_futures::spawn_local(async move {
+            let clear = || PROCESSING.store(false, Ordering::SeqCst);
+
+            let Ok(val) = wasm_bindgen_futures::JsFuture::from(promise).await else {
+                clear();
+                return;
+            };
+
+            let bitmap: web_sys::ImageBitmap = val.unchecked_into();
+            let w = bitmap.width();
+            let h = bitmap.height();
+
+            let document = web_sys::window().unwrap().document().unwrap();
+            let canvas: web_sys::HtmlCanvasElement =
+                document.create_element("canvas").unwrap().unchecked_into();
+            canvas.set_width(w);
+            canvas.set_height(h);
+            let ctx: web_sys::CanvasRenderingContext2d =
+                canvas.get_context("2d").unwrap().unwrap().unchecked_into();
+            ctx.draw_image_with_image_bitmap(&bitmap, 0.0, 0.0).unwrap();
+
+            let Ok(image_data) = ctx.get_image_data(0.0, 0.0, w as f64, h as f64) else {
+                clear();
+                return;
+            };
+            let rgba = image_data.data().0;
+
+            let pixel_buf =
+                slint::SharedPixelBuffer::<slint::Rgba8Pixel>::clone_from_slice(&rgba, w, h);
+            clear();
+
+            let _ = slint::invoke_from_event_loop(move || {
+                if let Some(handle) = main_window_weak.upgrade() {
+                    handle
+                        .global::<ImageStream>()
+                        .set_image(slint::Image::from_rgba8(pixel_buf));
+                }
+            });
+        });
     });
-    test_data_ws.set_onmessage(Some(onmessage_callback.as_ref().unchecked_ref()));
+    ws.set_onmessage(Some(onmessage_callback.as_ref().unchecked_ref()));
     onmessage_callback.forget();
 }
 
