@@ -1,7 +1,8 @@
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::cell::RefCell;
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::{LazyLock, Mutex};
 
-use slint::{ModelRc, StandardListViewItem, TableColumn, VecModel, Weak};
+use slint::{ModelRc, StandardListViewItem, TableColumn, VecModel, Weak, invoke_from_event_loop};
 use wasm_bindgen::prelude::*;
 use web_sys::{
     MessageEvent, WebSocket,
@@ -16,6 +17,7 @@ pub fn main() {
 
     handle_test_data(main_window.as_weak());
     handle_image_stream(main_window.as_weak());
+    handle_input(main_window.as_weak());
     handle_window(main_window.as_weak());
 
     main_window.show().unwrap();
@@ -25,9 +27,8 @@ pub fn main() {
 
 fn handle_test_data(app_window: Weak<MainWindow>) {
     let test_data_ws = WebSocket::new(&format!(
-        "ws://{}:{}/{}",
+        "ws://{}/{}",
         shared::ESP_IP,
-        shared::TEST_DATA_PORT,
         shared::cstr_to_str(shared::TEST_DATA_URI)
     ))
     .unwrap();
@@ -98,9 +99,8 @@ fn handle_image_stream(app_window: Weak<MainWindow>) {
     static PROCESSING: AtomicBool = AtomicBool::new(false);
 
     let ws = WebSocket::new(&format!(
-        "ws://{}:{}/{}",
+        "ws://{}/{}",
         shared::ESP_IP,
-        shared::IMAGE_STREAM_PORT,
         shared::cstr_to_str(shared::IMAGE_STREAM_URI)
     ))
     .unwrap();
@@ -178,6 +178,47 @@ fn handle_image_stream(app_window: Weak<MainWindow>) {
     });
     ws.set_onmessage(Some(onmessage_callback.as_ref().unchecked_ref()));
     onmessage_callback.forget();
+}
+
+fn handle_input(app_window: Weak<MainWindow>) {
+    static test_placeholder: AtomicU32 = AtomicU32::new(0);
+
+    thread_local! {
+        static INPUT_WS: RefCell<Option<WebSocket>> = const { RefCell::new(None) };
+    }
+
+    let ws = WebSocket::new(&format!(
+        "ws://{}/{}",
+        shared::ESP_IP,
+        shared::cstr_to_str(shared::WS_INPUT_URI)
+    ))
+    .unwrap();
+    ws.set_binary_type(web_sys::BinaryType::Arraybuffer);
+
+    INPUT_WS.with(|cell| *cell.borrow_mut() = Some(ws));
+
+    if let Some(handle) = app_window.upgrade() {
+        let sender = handle.global::<Sender>();
+
+        sender.on_test_send_data(move || {
+            INPUT_WS.with(|cell| {
+                if let Some(ws) = cell.borrow().as_ref() {
+                    if ws.ready_state() == WebSocket::OPEN {
+                        if let Some(handle) = app_window.upgrade() {
+                            let sender = handle.global::<Sender>();
+                            let data = shared::InputData {
+                                placeholder: test_placeholder.fetch_add(1, Ordering::SeqCst),
+                                display_pattern: sender.get_led_pattern() as u32,
+                            };
+                            web_sys::console::log_1(&format!("{:?}", data).into());
+                            ws.send_with_u8_array(&data.to_bytes()).unwrap();
+                        }
+                    }
+                }
+            });
+            test_placeholder.load(Ordering::SeqCst).try_into().unwrap()
+        });
+    }
 }
 
 fn handle_window(app_window: Weak<MainWindow>) {

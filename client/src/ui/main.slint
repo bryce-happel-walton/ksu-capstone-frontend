@@ -6,7 +6,8 @@ import {
 } from "std-widgets.slint";
 
 export global Sender {
-    callback test-send-data();
+    in-out property <int> led_pattern: 0;
+    callback test-send-data() -> int;
 }
 
 export global TestData {
@@ -72,6 +73,8 @@ export component MainWindow inherits Window {
             spacing: 10px;
 
             VerticalLayout {
+                alignment: start;
+
                 padding: 10px;
                 spacing: 12px;
 
@@ -122,11 +125,33 @@ export component MainWindow inherits Window {
             }
 
             VerticalLayout {
+                alignment: start;
+
                 Rectangle {
                     Button {
-                        text: "TEST WS SEND";
+                        property <int> value: 0;
+                        text: "TEST WS SEND: " + value;
 
-                        clicked => Sender.test-send-data();
+                        clicked => {
+                            self.value = Sender.test-send-data() - 1;
+                        };
+                    }
+                }
+
+                Rectangle {
+                    ComboBox {
+                        model: [
+                            "DISPLAY_PATTERN_CORNERS",
+                            "DISPLAY_PATTERN_CENTERS",
+                            "DISPLAY_PATTERN_ENCIRCLE",
+                            "DISPLAY_PATTERN_SHRINK_ENCIRCLE",
+                            "DISPLAY_PATTERN_SHRINK_SQUARE",
+                        ];
+                        current-index: 0;
+
+                        changed current-index => {
+                            Sender.led_pattern = self.current-index
+                        }
                     }
                 }
             }

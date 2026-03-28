@@ -18,6 +18,13 @@ pub fn cstr_to_str(bytes: &[u8]) -> &str {
     std::str::from_utf8(&bytes[..len]).unwrap_or("")
 }
 
+impl InputData {
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let ptr = self as *const Self as *const u8;
+        unsafe { std::slice::from_raw_parts(ptr, std::mem::size_of::<Self>()) }.to_vec()
+    }
+}
+
 impl TestData {
     pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
         if bytes.len() == std::mem::size_of::<Self>() {
