@@ -3,6 +3,7 @@ import {
     ComboBox,
     LineEdit,
     Button,
+    AboutSlint,
 } from "std-widgets.slint";
 
 export global Sender {
@@ -15,9 +16,18 @@ export global TestData {
     in property <[[StandardListViewItem]]> test-packets;
 }
 
-
 export global ImageStream {
     in property <image> image;
+}
+
+export global CameraSettings {
+    in-out property <int> stream-type-index: 0;
+    in-out property <int> frame-size-index: 1;
+    in-out property <int> jpeg-quality: 12;
+    in-out property <float> brightness: 0;
+    in-out property <float> contrast: 0;
+    in-out property <float> saturation: 0;
+    in-out property <float> sharpness: 0;
 }
 
 component SettingBox inherits VerticalLayout {
@@ -35,6 +45,11 @@ component SettingBox inherits VerticalLayout {
 }
 
 export component MainWindow inherits Window {
+
+    about_dialog := PopupWindow {
+        AboutSlint { }
+    }
+
     MenuBar {
         Menu {
             title: @tr("File");
@@ -54,11 +69,11 @@ export component MainWindow inherits Window {
         }
 
         Menu {
-            title: @tr("About");
+            title: @tr("Attributions");
             MenuItem {
-                title: @tr("Attributions");
+                title: @tr("View Attributions");
                 activated => {
-                    show-attributions();
+                    about_dialog.show();
                 }
             }
         }
@@ -128,17 +143,6 @@ export component MainWindow inherits Window {
                 alignment: start;
 
                 Rectangle {
-                    Button {
-                        property <int> value: 0;
-                        text: "TEST WS SEND: " + value;
-
-                        clicked => {
-                            self.value = Sender.test-send-data() - 1;
-                        };
-                    }
-                }
-
-                Rectangle {
                     ComboBox {
                         model: [
                             "DISPLAY_PATTERN_CORNERS",
@@ -150,7 +154,8 @@ export component MainWindow inherits Window {
                         current-index: 0;
 
                         changed current-index => {
-                            Sender.led_pattern = self.current-index
+                            Sender.led_pattern = self.current-index;
+                            Sender.test-send-data();
                         }
                     }
                 }
