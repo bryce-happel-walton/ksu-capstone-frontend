@@ -52,23 +52,6 @@ export component MainWindow inherits Window {
 
     MenuBar {
         Menu {
-            title: @tr("File");
-            MenuItem {
-                title: @tr("New");
-                activated => {
-                    file-new();
-                }
-            }
-
-            MenuItem {
-                title: @tr("Open");
-                activated => {
-                    file-open();
-                }
-            }
-        }
-
-        Menu {
             title: @tr("Attributions");
             MenuItem {
                 title: @tr("View Attributions");
@@ -78,10 +61,6 @@ export component MainWindow inherits Window {
             }
         }
     }
-
-    callback file-new();
-    callback file-open();
-    callback show-attributions();
 
     VerticalLayout {
         HorizontalLayout {
