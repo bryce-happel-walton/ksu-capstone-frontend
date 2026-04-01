@@ -8,6 +8,7 @@ impl bindgen::callbacks::ParseCallbacks for AddDerives {
                 "strum::VariantArray".to_string(),
                 "strum::EnumIter".to_string(),
                 "strum::Display".to_string(),
+                "strum::FromRepr".to_string(),
             ]
         } else {
             vec![]
@@ -28,6 +29,7 @@ fn main() {
         .derive_eq(true)
         .derive_partialeq(true)
         .layout_tests(false)
+        .rustified_enum("TestDisplayPattern")
         .parse_callbacks(Box::new(AddDerives))
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()));
 

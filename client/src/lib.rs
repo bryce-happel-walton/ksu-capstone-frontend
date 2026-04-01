@@ -1,8 +1,9 @@
 use std::cell::RefCell;
-use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{LazyLock, Mutex};
 
-use slint::{ModelRc, StandardListViewItem, TableColumn, VecModel, Weak, invoke_from_event_loop};
+use slint::{ModelRc, SharedString, StandardListViewItem, TableColumn, VecModel, Weak};
+use strum::VariantArray;
 use wasm_bindgen::prelude::*;
 use web_sys::{
     MessageEvent, WebSocket,
@@ -15,6 +16,7 @@ slint::include_modules!();
 pub fn main() {
     let main_window = MainWindow::new().unwrap();
 
+    handle_helpers(main_window.as_weak());
     handle_test_data(main_window.as_weak());
     handle_image_stream(main_window.as_weak());
     handle_input(main_window.as_weak());
@@ -181,8 +183,6 @@ fn handle_image_stream(app_window: Weak<MainWindow>) {
 }
 
 fn handle_input(app_window: Weak<MainWindow>) {
-    static test_placeholder: AtomicU32 = AtomicU32::new(0);
-
     thread_local! {
         static INPUT_WS: RefCell<Option<WebSocket>> = const { RefCell::new(None) };
     }
@@ -207,8 +207,10 @@ fn handle_input(app_window: Weak<MainWindow>) {
                         if let Some(handle) = app_window.upgrade() {
                             let sender = handle.global::<Sender>();
                             let data = shared::InputData {
-                                placeholder: test_placeholder.fetch_add(1, Ordering::SeqCst),
-                                display_pattern: sender.get_led_pattern() as u32,
+                                display_pattern: shared::TestDisplayPattern::from_repr(
+                                    sender.get_led_pattern() as u32,
+                                )
+                                .unwrap_or(shared::TestDisplayPattern::DISPLAY_PATTERN_CENTERS),
                             };
                             web_sys::console::log_1(&format!("{:?}", data).into());
                             ws.send_with_u8_array(&data.to_bytes()).unwrap();
@@ -216,7 +218,6 @@ fn handle_input(app_window: Weak<MainWindow>) {
                     }
                 }
             });
-            test_placeholder.load(Ordering::SeqCst).try_into().unwrap()
         });
     }
 }
@@ -266,6 +267,21 @@ fn set_data_columns(handle: Weak<MainWindow>) {
                     col
                 })
                 .collect::<Vec<TableColumn>>()
+                .as_slice()
+                .into(),
+        );
+    }
+}
+
+fn handle_helpers(handle: Weak<MainWindow>) {
+    if let Some(handle) = handle.upgrade() {
+        let helper = handle.global::<Helper>();
+
+        helper.set_display_patterns(
+            shared::TestDisplayPattern::VARIANTS
+                .iter()
+                .map(|var| format!("{var}").into())
+                .collect::<Vec<SharedString>>()
                 .as_slice()
                 .into(),
         );

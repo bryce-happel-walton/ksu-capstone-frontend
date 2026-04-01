@@ -8,7 +8,11 @@ import {
 
 export global Sender {
     in-out property <int> led_pattern: 0;
-    callback test-send-data() -> int;
+    callback test-send-data();
+}
+
+export global Helper {
+    in-out property <[string]> display-patterns;
 }
 
 export global TestData {
@@ -21,8 +25,9 @@ export global ImageStream {
 }
 
 export global CameraSettings {
+    in-out property <[string]> frame-sizes;
+
     in-out property <int> stream-type-index: 0;
-    in-out property <int> frame-size-index: 1;
     in-out property <int> jpeg-quality: 12;
     in-out property <float> brightness: 0;
     in-out property <float> contrast: 0;
@@ -73,22 +78,10 @@ export component MainWindow inherits Window {
                 spacing: 12px;
 
                 SettingBox {
-                    label: "Type";
-                    ComboBox {
-                        model: ["Option 1", "Option 2"];
-                    }
-                }
-
-                SettingBox {
-                    label: "Name";
-                    LineEdit { }
-                }
-
-                SettingBox {
                     label: "Frame Size";
 
                     ComboBox {
-                        model: ["QVGA", "VGA", "SVGA", "UXGA"];
+                        model: CameraSettings.frame-sizes;
                     }
                 }
 
@@ -123,16 +116,7 @@ export component MainWindow inherits Window {
 
                 Rectangle {
                     ComboBox {
-                        model: [
-                            "DISPLAY_PATTERN_CORNERS",
-                            "DISPLAY_PATTERN_CENTERS",
-                            "DISPLAY_PATTERN_ENCIRCLE",
-                            "DISPLAY_PATTERN_SHRINK_ENCIRCLE",
-                            "DISPLAY_PATTERN_SHRINK_SQUARE",
-                            "DISPLAY_PATTERN_FONT_TEST",
-                            "DISPLAY_PATTERN_FONT_NUM_SEGMENT_TEST",
-                            "DISPLAY_PATTERN_SLOW_DOWN",
-                        ];
+                        model: Helper.display-patterns;
                         current-index: 0;
 
                         changed current-index => {
