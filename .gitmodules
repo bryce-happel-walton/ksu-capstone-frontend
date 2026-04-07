@@ -1,4 +1,0 @@
-[submodule "shared/ksu-capstone-embedded"]
-	path = shared/ksu-capstone-embedded
-	fetchRecurseSubmodules = on-demand
-	url = https://github.com/bryce-happel-walton/ksu-capstone-embedded.git

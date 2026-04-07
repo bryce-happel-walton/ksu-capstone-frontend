@@ -17,7 +17,7 @@ pub fn main() {
     let main_window = MainWindow::new().unwrap();
 
     handle_helpers(main_window.as_weak());
-    handle_test_data(main_window.as_weak());
+    handle_radar_data(main_window.as_weak());
     handle_image_stream(main_window.as_weak());
     handle_input(main_window.as_weak());
     handle_window(main_window.as_weak());
@@ -27,14 +27,14 @@ pub fn main() {
     slint::run_event_loop().unwrap();
 }
 
-fn handle_test_data(app_window: Weak<MainWindow>) {
-    let test_data_ws = WebSocket::new(&format!(
+fn handle_radar_data(app_window: Weak<MainWindow>) {
+    let radar_data_ws = WebSocket::new(&format!(
         "ws://{}/{}",
         shared::ESP_IP,
-        shared::cstr_to_str(shared::TEST_DATA_URI)
+        shared::cstr_to_str(shared::RADAR_DATA_URI)
     ))
     .unwrap();
-    test_data_ws.set_binary_type(web_sys::BinaryType::Arraybuffer);
+    radar_data_ws.set_binary_type(web_sys::BinaryType::Arraybuffer);
 
     static CURRENT_DATA: LazyLock<Mutex<Vec<Vec<StandardListViewItem>>>> =
         LazyLock::new(|| Mutex::new(Vec::new()));
@@ -44,38 +44,38 @@ fn handle_test_data(app_window: Weak<MainWindow>) {
     let onmessage_callback = Closure::<dyn FnMut(_)>::new(move |event: MessageEvent| {
         if let Ok(buf) = event.data().dyn_into::<js_sys::ArrayBuffer>() {
             let bytes = js_sys::Uint8Array::new(&buf).to_vec();
-            web_sys::console::log_1(&format!("[test_data] received {} bytes", bytes.len()).into());
+            web_sys::console::log_1(&format!("[radar_data] received {} bytes", bytes.len()).into());
 
-            if let Some(esp_data) = shared::TestData::from_bytes(&bytes) {
-                web_sys::console::log_1(&format!("[test_data] {esp_data:?}").into());
+            if let Some(esp_data) = shared::RadarPayload::from_bytes(&bytes) {
+                web_sys::console::log_1(&format!("[radar_data] {esp_data:?}").into());
 
                 let main_window_weak = main_window_weak.clone();
                 let _ = slint::invoke_from_event_loop(move || {
                     if let Some(handle) = main_window_weak.upgrade() {
-                        let test_data = handle.global::<TestData>();
-
-                        let hello = shared::TestData::str_from_chars(&esp_data.hello);
-                        let beep = esp_data.beep;
-                        let boop = esp_data.boop;
+                        let radar_data = handle.global::<DisplayRadarData>();
 
                         let mut data = CURRENT_DATA.lock().unwrap();
-                        data.push(vec![
-                            {
-                                let mut item = StandardListViewItem::default();
-                                item.text = hello.into();
-                                item
-                            },
-                            {
-                                let mut item = StandardListViewItem::default();
-                                item.text = format!("{}", beep).into();
-                                item
-                            },
-                            {
-                                let mut item = StandardListViewItem::default();
-                                item.text = format!("{}", boop).into();
-                                item
-                            },
-                        ]);
+                        data.clear();
+
+                        let make_item = |text: String| {
+                            let mut item = StandardListViewItem::default();
+                            item.text = text.into();
+                            item
+                        };
+
+                        for target in &esp_data.targets[..esp_data.count as usize] {
+                            data.push(vec![
+                                make_item(format!("{}", target.angle)),
+                                make_item(format!("{} m", target.distance)),
+                                make_item(if target.direction == 0 {
+                                    "Away".into()
+                                } else {
+                                    "Towards".into()
+                                }),
+                                make_item(format!("{} km/h", target.speed)),
+                                make_item(format!("{}", target.snr)),
+                            ]);
+                        }
 
                         let model: ModelRc<ModelRc<StandardListViewItem>> =
                             ModelRc::new(VecModel::from(
@@ -87,13 +87,13 @@ fn handle_test_data(app_window: Weak<MainWindow>) {
                                     .collect::<Vec<_>>(),
                             ));
 
-                        test_data.set_test_packets(model);
+                        radar_data.set_test_packets(model);
                     }
                 });
             }
         }
     });
-    test_data_ws.set_onmessage(Some(onmessage_callback.as_ref().unchecked_ref()));
+    radar_data_ws.set_onmessage(Some(onmessage_callback.as_ref().unchecked_ref()));
     onmessage_callback.forget();
 }
 
@@ -255,9 +255,9 @@ fn update_window_size(app_window: Weak<MainWindow>) {
 
 fn set_data_columns(handle: Weak<MainWindow>) {
     if let Some(handle) = handle.upgrade() {
-        let test_data = handle.global::<TestData>();
+        let test_data = handle.global::<DisplayRadarData>();
 
-        let cols = vec!["Hello", "Beep", "Boop"];
+        let cols = vec!["Angle", "Distance", "Direction", "Speed", "SNR"];
 
         test_data.set_test_packet_columns(
             cols.iter()

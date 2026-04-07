@@ -18,9 +18,25 @@ impl bindgen::callbacks::ParseCallbacks for AddDerives {
 
 fn main() {
     const SUBMODULE: &str = "ksu-capstone-embedded";
+    const REPO_URL: &str = "https://github.com/bryce-happel-walton/ksu-capstone-embedded.git";
+
+    let out_dir = std::path::PathBuf::from(std::env::var("OUT_DIR").unwrap());
+    let submodule_path = out_dir.join(SUBMODULE);
+
+    if !submodule_path.exists() {
+        std::process::Command::new("git")
+            .args(["clone", REPO_URL, SUBMODULE])
+            .current_dir(&out_dir)
+            .status()
+            .expect("Failed to run git clone");
+    }
+
     let headers = vec![
-        format!("{SUBMODULE}/shared/shared_lib.h"),
-        format!("{SUBMODULE}/managed_components/espressif__esp32-camera/driver/include/sensor.h"),
+        format!("{}/shared/shared_lib.h", submodule_path.display()),
+        format!(
+            "{}/managed_components/espressif__esp32-camera/driver/include/sensor.h",
+            submodule_path.display()
+        ),
     ];
 
     let mut builder = bindgen::Builder::default()

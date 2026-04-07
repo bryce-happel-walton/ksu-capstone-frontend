@@ -15,7 +15,7 @@ export global Helper {
     in-out property <[string]> display-patterns;
 }
 
-export global TestData {
+export global DisplayRadarData {
     in property <[TableColumn]> test-packet-columns;
     in property <[[StandardListViewItem]]> test-packets;
 }
@@ -128,8 +128,8 @@ export component MainWindow inherits Window {
             }
 
             StandardTableView {
-                columns: TestData.test-packet-columns;
-                rows: TestData.test-packets;
+                columns: DisplayRadarData.test-packet-columns;
+                rows: DisplayRadarData.test-packets;
             }
 
             i-stream-image := Image {

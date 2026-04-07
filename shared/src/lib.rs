@@ -25,7 +25,7 @@ impl InputData {
     }
 }
 
-impl TestData {
+impl RadarPayload {
     pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
         if bytes.len() == std::mem::size_of::<Self>() {
             Some(unsafe { std::ptr::read_unaligned(bytes.as_ptr() as *const Self) })
@@ -38,10 +38,10 @@ impl TestData {
         let ptr = self as *const Self as *const u8;
         unsafe { std::slice::from_raw_parts(ptr, std::mem::size_of::<Self>()) }.to_vec()
     }
+}
 
-    pub fn str_from_chars(field: &[std::ffi::c_char]) -> &str {
-        let bytes = unsafe { std::slice::from_raw_parts(field.as_ptr() as *const u8, field.len()) };
-        let len = bytes.iter().position(|&b| b == 0).unwrap_or(bytes.len());
-        std::str::from_utf8(&bytes[..len]).unwrap_or("")
-    }
+pub fn str_from_chars(field: &[std::ffi::c_char]) -> &str {
+    let bytes = unsafe { std::slice::from_raw_parts(field.as_ptr() as *const u8, field.len()) };
+    let len = bytes.iter().position(|&b| b == 0).unwrap_or(bytes.len());
+    std::str::from_utf8(&bytes[..len]).unwrap_or("")
 }
