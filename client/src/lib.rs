@@ -55,7 +55,6 @@ fn handle_radar_data(app_window: Weak<MainWindow>) {
                         let radar_data = handle.global::<DisplayRadarData>();
 
                         let mut data = CURRENT_DATA.lock().unwrap();
-                        data.clear();
 
                         let make_item = |text: String| {
                             let mut item = StandardListViewItem::default();
