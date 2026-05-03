@@ -8,7 +8,7 @@ import {
 
 export global Sender {
     in-out property <int> led_pattern: 0;
-    callback test-send-data();
+    callback send-led-pattern();
 }
 
 export global Helper {
@@ -35,31 +35,22 @@ export global CameraSettings {
     in-out property <float> sharpness: 0;
 }
 
-component SettingBox inherits VerticalLayout {
-    in property <string> label;
-
-    alignment: start;
-
-    i-label := Text {
-        text: root.label;
-    }
-
-    Rectangle {
-        @children
-    }
-}
-
 export component MainWindow inherits Window {
 
     about_dialog := PopupWindow {
-        AboutSlint { }
+        Rectangle {
+            background: black;
+            AboutSlint { }
+        }
     }
 
     MenuBar {
         Menu {
             title: @tr("Attributions");
+
             MenuItem {
                 title: @tr("View Attributions");
+
                 activated => {
                     about_dialog.show();
                 }
@@ -74,46 +65,6 @@ export component MainWindow inherits Window {
             VerticalLayout {
                 alignment: start;
 
-                padding: 10px;
-                spacing: 12px;
-
-                SettingBox {
-                    label: "Frame Size";
-
-                    ComboBox {
-                        model: CameraSettings.frame-sizes;
-                    }
-                }
-
-                SettingBox {
-                    label: "JPEG Quality";
-                    LineEdit { }
-                }
-
-                SettingBox {
-                    label: "Brightness";
-                    LineEdit { }
-                }
-
-                SettingBox {
-                    label: "Contrast";
-                    LineEdit { }
-                }
-
-                SettingBox {
-                    label: "Saturation";
-                    LineEdit { }
-                }
-
-                SettingBox {
-                    label: "Sharpness";
-                    LineEdit { }
-                }
-            }
-
-            VerticalLayout {
-                alignment: start;
-
                 Rectangle {
                     ComboBox {
                         model: Helper.display-patterns;
@@ -121,7 +72,7 @@ export component MainWindow inherits Window {
 
                         changed current-index => {
                             Sender.led_pattern = self.current-index;
-                            Sender.test-send-data();
+                            Sender.send-led-pattern();
                         }
                     }
                 }
@@ -132,9 +83,13 @@ export component MainWindow inherits Window {
                 rows: DisplayRadarData.test-packets;
             }
 
-            i-stream-image := Image {
-                width: 50%;
-                source: ImageStream.image;
+            Rectangle {
+                background: orange;
+
+                i-stream-image := Image {
+                    width: 50%;
+                    source: ImageStream.image;
+                }
             }
         }
     }

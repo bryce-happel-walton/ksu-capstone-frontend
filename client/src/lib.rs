@@ -199,7 +199,7 @@ fn handle_input(app_window: Weak<MainWindow>) {
     if let Some(handle) = app_window.upgrade() {
         let sender = handle.global::<Sender>();
 
-        sender.on_test_send_data(move || {
+        sender.on_send_led_pattern(move || {
             INPUT_WS.with(|cell| {
                 if let Some(ws) = cell.borrow().as_ref() {
                     if ws.ready_state() == WebSocket::OPEN {
