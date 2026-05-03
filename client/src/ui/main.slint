@@ -4,15 +4,20 @@ import {
     LineEdit,
     Button,
     AboutSlint,
+    TextEdit,
 } from "std-widgets.slint";
 
 export global Sender {
-    in-out property <int> led_pattern: 0;
-    callback send-led-pattern();
+    in-out property <int> led-pattern: 0;
+    in-out property <int> speed-unit: 0;
+    in-out property <int> speed-threshold: 0;
+
+    callback update-sender-data();
 }
 
 export global Helper {
     in-out property <[string]> display-patterns;
+    in-out property <[string]> display-speed-units;
 }
 
 export global DisplayRadarData {
@@ -65,14 +70,37 @@ export component MainWindow inherits Window {
             VerticalLayout {
                 alignment: start;
 
-                Rectangle {
-                    ComboBox {
-                        model: Helper.display-patterns;
-                        current-index: 0;
+                ComboBox {
+                    model: Helper.display-patterns;
+                    current-index <=> Sender.led-pattern;
 
-                        changed current-index => {
-                            Sender.led_pattern = self.current-index;
-                            Sender.send-led-pattern();
+                    changed current-index => Sender.update-sender-data();
+                }
+
+                i-speed-combo := ComboBox {
+                    model: Helper.display-speed-units;
+                    current-index <=> Sender.speed-unit;
+
+                    changed current-index => Sender.update-sender-data();
+                }
+
+                HorizontalLayout {
+                    spacing: 5px;
+
+                    Rectangle {
+                        Text {
+                            text: "Speed warning threshold:";
+                        }
+                    }
+
+                    LineEdit {
+                        placeholder-text: Sender.speed-unit == 0 ? 25 : 40;
+
+                        edited(text) => {
+                            if text.is-float() {
+                                Sender.speed-threshold = text.to-float();
+                                Sender.update-sender-data();
+                            }
                         }
                     }
                 }
@@ -83,13 +111,9 @@ export component MainWindow inherits Window {
                 rows: DisplayRadarData.test-packets;
             }
 
-            Rectangle {
-                background: orange;
-
-                i-stream-image := Image {
-                    width: 50%;
-                    source: ImageStream.image;
-                }
+            i-stream-image := Image {
+                width: 50%;
+                source: ImageStream.image;
             }
         }
     }

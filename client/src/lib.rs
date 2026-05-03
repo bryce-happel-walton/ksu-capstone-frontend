@@ -199,17 +199,22 @@ fn handle_input(app_window: Weak<MainWindow>) {
     if let Some(handle) = app_window.upgrade() {
         let sender = handle.global::<Sender>();
 
-        sender.on_send_led_pattern(move || {
+        sender.on_update_sender_data(move || {
             INPUT_WS.with(|cell| {
                 if let Some(ws) = cell.borrow().as_ref() {
                     if ws.ready_state() == WebSocket::OPEN {
                         if let Some(handle) = app_window.upgrade() {
                             let sender = handle.global::<Sender>();
                             let data = shared::InputData {
-                                display_pattern: shared::TestDisplayPattern::from_repr(
+                                display_pattern: shared::DisplayPattern::from_repr(
                                     sender.get_led_pattern() as u32,
                                 )
-                                .unwrap_or(shared::TestDisplayPattern::DISPLAY_PATTERN_CENTERS),
+                                .unwrap_or(shared::DisplayPattern::DISPLAY_PATTERN_CENTERS),
+                                display_speed_unit: shared::SpeedUnit::from_repr(
+                                    sender.get_speed_unit() as u32,
+                                )
+                                .unwrap_or(shared::SpeedUnit::MPH),
+                                speed_threshold_kph: sender.get_speed_threshold(),
                             };
                             web_sys::console::log_1(&format!("{:?}", data).into());
                             ws.send_with_u8_array(&data.to_bytes()).unwrap();
@@ -277,7 +282,16 @@ fn handle_helpers(handle: Weak<MainWindow>) {
         let helper = handle.global::<Helper>();
 
         helper.set_display_patterns(
-            shared::TestDisplayPattern::VARIANTS
+            shared::DisplayPattern::VARIANTS
+                .iter()
+                .map(|var| format!("{var}").into())
+                .collect::<Vec<SharedString>>()
+                .as_slice()
+                .into(),
+        );
+
+        helper.set_display_speed_units(
+            shared::SpeedUnit::VARIANTS
                 .iter()
                 .map(|var| format!("{var}").into())
                 .collect::<Vec<SharedString>>()

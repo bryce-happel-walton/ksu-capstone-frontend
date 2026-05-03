@@ -45,7 +45,8 @@ fn main() {
         .derive_eq(true)
         .derive_partialeq(true)
         .layout_tests(false)
-        .rustified_enum("TestDisplayPattern")
+        .rustified_enum("DisplayPattern")
+        .rustified_enum("SpeedUnit")
         .parse_callbacks(Box::new(AddDerives))
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()));
 
