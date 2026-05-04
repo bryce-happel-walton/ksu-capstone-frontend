@@ -3,6 +3,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{LazyLock, Mutex};
 
 use slint::{ModelRc, SharedString, StandardListViewItem, TableColumn, VecModel, Weak};
+use shared::FieldNamesAsArray;
 use strum::VariantArray;
 use wasm_bindgen::prelude::*;
 use web_sys::{
@@ -27,17 +28,21 @@ pub fn main() {
     slint::run_event_loop().unwrap();
 }
 
+/// Takes the data from the radar websocket provided by the embedded system.
+/// Currently does nothing with this data except display it, but this can be expanded
+/// for enforcement purposes
 fn handle_radar_data(app_window: Weak<MainWindow>) {
     let radar_data_ws = WebSocket::new(&format!(
         "ws://{}/{}",
         shared::ESP_IP,
-        shared::cstr_to_str(shared::RADAR_DATA_URI)
+        shared::bytes_to_str(shared::RADAR_DATA_URI)
     ))
     .unwrap();
     radar_data_ws.set_binary_type(web_sys::BinaryType::Arraybuffer);
 
     static CURRENT_DATA: LazyLock<Mutex<Vec<Vec<StandardListViewItem>>>> =
-        LazyLock::new(|| Mutex::new(Vec::new()));
+        LazyLock::new(|| Default::default());
+
     set_data_columns(app_window.clone());
 
     let main_window_weak = app_window.clone();
@@ -86,23 +91,26 @@ fn handle_radar_data(app_window: Weak<MainWindow>) {
                                     .collect::<Vec<_>>(),
                             ));
 
-                        radar_data.set_test_packets(model);
+                        radar_data.set_packets(model);
                     }
                 });
             }
         }
     });
+
     radar_data_ws.set_onmessage(Some(onmessage_callback.as_ref().unchecked_ref()));
     onmessage_callback.forget();
 }
 
+/// Takes the jpeg stream from the websocket provided by the embedded system and converts it to an
+/// image for slint to display
 fn handle_image_stream(app_window: Weak<MainWindow>) {
     static PROCESSING: AtomicBool = AtomicBool::new(false);
 
     let ws = WebSocket::new(&format!(
         "ws://{}/{}",
         shared::ESP_IP,
-        shared::cstr_to_str(shared::IMAGE_STREAM_URI)
+        shared::bytes_to_str(shared::IMAGE_STREAM_URI)
     ))
     .unwrap();
     ws.set_binary_type(web_sys::BinaryType::Arraybuffer);
@@ -130,7 +138,7 @@ fn handle_image_stream(app_window: Weak<MainWindow>) {
         let blob =
             web_sys::Blob::new_with_u8_array_sequence_and_options(&parts, &blob_opts).unwrap();
 
-        // make the browser decode the jpeg
+        // make websys decode the stream for hardware acceleration
         let promise = web_sys::window()
             .unwrap()
             .create_image_bitmap_with_blob(&blob)
@@ -181,6 +189,9 @@ fn handle_image_stream(app_window: Weak<MainWindow>) {
     onmessage_callback.forget();
 }
 
+/// Handles *sending* data over the websocket based on the members of `shared::InputData`
+///
+/// This will be user configurable settings that we send to the embedded device
 fn handle_input(app_window: Weak<MainWindow>) {
     thread_local! {
         static INPUT_WS: RefCell<Option<WebSocket>> = const { RefCell::new(None) };
@@ -189,7 +200,7 @@ fn handle_input(app_window: Weak<MainWindow>) {
     let ws = WebSocket::new(&format!(
         "ws://{}/{}",
         shared::ESP_IP,
-        shared::cstr_to_str(shared::WS_INPUT_URI)
+        shared::bytes_to_str(shared::WS_INPUT_URI)
     ))
     .unwrap();
     ws.set_binary_type(web_sys::BinaryType::Arraybuffer);
@@ -205,17 +216,19 @@ fn handle_input(app_window: Weak<MainWindow>) {
                     if ws.ready_state() == WebSocket::OPEN {
                         if let Some(handle) = app_window.upgrade() {
                             let sender = handle.global::<Sender>();
+                            let display_speed_unit =
+                                shared::SpeedUnit::from_repr(sender.get_speed_unit() as u32)
+                                    .unwrap_or(shared::SpeedUnit::MPH);
+
                             let data = shared::InputData {
                                 display_pattern: shared::DisplayPattern::from_repr(
                                     sender.get_led_pattern() as u32,
                                 )
                                 .unwrap_or(shared::DisplayPattern::DISPLAY_PATTERN_CENTERS),
-                                display_speed_unit: shared::SpeedUnit::from_repr(
-                                    sender.get_speed_unit() as u32,
-                                )
-                                .unwrap_or(shared::SpeedUnit::MPH),
+                                display_speed_unit,
                                 speed_threshold_kph: sender.get_speed_threshold(),
                             };
+
                             web_sys::console::log_1(&format!("{:?}", data).into());
                             ws.send_with_u8_array(&data.to_bytes()).unwrap();
                         }
@@ -226,6 +239,7 @@ fn handle_input(app_window: Weak<MainWindow>) {
     }
 }
 
+/// Passes `web_sys` window changes on to `slint`
 fn handle_window(app_window: Weak<MainWindow>) {
     let window = web_sys::window().unwrap();
     let weak_app_window = app_window.clone();
@@ -247,6 +261,7 @@ fn handle_window(app_window: Weak<MainWindow>) {
     on_resize.forget();
 }
 
+/// Updates the window size based on what `web_sys` reports
 fn update_window_size(app_window: Weak<MainWindow>) {
     let window = web_sys::window().unwrap();
     let dpr = window.device_pixel_ratio();
@@ -257,14 +272,14 @@ fn update_window_size(app_window: Weak<MainWindow>) {
     }
 }
 
+/// Sets the columns of the main `StandardTableView`
 fn set_data_columns(handle: Weak<MainWindow>) {
     if let Some(handle) = handle.upgrade() {
-        let test_data = handle.global::<DisplayRadarData>();
+        let display_radar_data = handle.global::<DisplayRadarData>();
 
-        let cols = vec!["Angle", "Distance", "Direction", "Speed", "SNR"];
-
-        test_data.set_test_packet_columns(
-            cols.iter()
+        display_radar_data.set_packet_columns(
+            shared::VehicleTarget::FIELD_NAMES_AS_ARRAY
+                .iter()
                 .map(|x| {
                     let mut col = TableColumn::default();
                     col.title = String::from(*x).into();
@@ -277,6 +292,8 @@ fn set_data_columns(handle: Weak<MainWindow>) {
     }
 }
 
+/// Updates the ComboBox selection models based on the enum variants
+/// exposed by `strum`
 fn handle_helpers(handle: Weak<MainWindow>) {
     if let Some(handle) = handle.upgrade() {
         let helper = handle.global::<Helper>();

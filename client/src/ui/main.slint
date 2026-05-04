@@ -21,8 +21,8 @@ export global Helper {
 }
 
 export global DisplayRadarData {
-    in property <[TableColumn]> test-packet-columns;
-    in property <[[StandardListViewItem]]> test-packets;
+    in property <[TableColumn]> packet-columns;
+    in property <[[StandardListViewItem]]> packets;
 }
 
 export global ImageStream {
@@ -107,8 +107,8 @@ export component MainWindow inherits Window {
             }
 
             StandardTableView {
-                columns: DisplayRadarData.test-packet-columns;
-                rows: DisplayRadarData.test-packets;
+                columns: DisplayRadarData.packet-columns;
+                rows: DisplayRadarData.packets;
             }
 
             i-stream-image := Image {

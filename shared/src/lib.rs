@@ -1,8 +1,5 @@
 pub const ESP_IP: &'static str = "192.168.4.1";
-
 pub const SERVER_IP: &'static str = "127.0.0.1";
-pub const SERVER_WS_TEST_DATA_DIR: &'static str = "test_data";
-pub const SERVER_WS_IMAGE_STREAM_DIR: &'static str = "image_stream";
 
 #[allow(non_upper_case_globals)]
 #[allow(non_camel_case_types)]
@@ -12,11 +9,7 @@ pub mod bindings {
 }
 
 pub use bindings::*;
-
-pub fn cstr_to_str(bytes: &[u8]) -> &str {
-    let len = bytes.iter().position(|&b| b == 0).unwrap_or(bytes.len());
-    std::str::from_utf8(&bytes[..len]).unwrap_or("")
-}
+pub use struct_field_names_as_array::FieldNamesAsArray;
 
 impl InputData {
     pub fn to_bytes(&self) -> Vec<u8> {
@@ -40,8 +33,14 @@ impl RadarPayload {
     }
 }
 
-pub fn str_from_chars(field: &[std::ffi::c_char]) -> &str {
-    let bytes = unsafe { std::slice::from_raw_parts(field.as_ptr() as *const u8, field.len()) };
+/// Converts a utf8 byte array into a Rust str
+pub fn bytes_to_str(bytes: &[u8]) -> &str {
     let len = bytes.iter().position(|&b| b == 0).unwrap_or(bytes.len());
     std::str::from_utf8(&bytes[..len]).unwrap_or("")
+}
+
+/// Converts C char array into Rust str
+pub fn str_from_chars(field: &[std::ffi::c_char]) -> &str {
+    let bytes = unsafe { std::slice::from_raw_parts(field.as_ptr() as *const u8, field.len()) };
+    bytes_to_str(bytes)
 }

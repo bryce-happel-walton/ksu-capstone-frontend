@@ -8,7 +8,8 @@
     name = "shared"
 
 [dependencies]
-    strum = { workspace = true }
+    strum                       = { workspace = true }
+    struct-field-names-as-array = "*"
 
 [build-dependencies]
     bindgen = "*"

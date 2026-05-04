@@ -3,15 +3,17 @@ struct AddDerives;
 
 impl bindgen::callbacks::ParseCallbacks for AddDerives {
     fn add_derives(&self, info: &bindgen::callbacks::DeriveInfo<'_>) -> Vec<String> {
-        if matches!(info.kind, bindgen::callbacks::TypeKind::Enum) {
-            vec![
+        match info.kind {
+            bindgen::callbacks::TypeKind::Enum => vec![
                 "strum::VariantArray".to_string(),
                 "strum::EnumIter".to_string(),
                 "strum::Display".to_string(),
                 "strum::FromRepr".to_string(),
-            ]
-        } else {
-            vec![]
+            ],
+            bindgen::callbacks::TypeKind::Struct if info.name == "VehicleTarget" => {
+                vec!["struct_field_names_as_array::FieldNamesAsArray".to_string()]
+            }
+            _ => vec![],
         }
     }
 }
