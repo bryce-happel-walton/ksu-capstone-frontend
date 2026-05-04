@@ -7,15 +7,15 @@
 [dependencies]
     shared = { workspace = true }
 
-    tokio             = { version = "*", features = ["full"] }
-    tokio-tungstenite = "*"
-    futures-util      = "*"
-    reqwest           = { version = "*", features = ["json"] }
-    axum              = { version = "*", features = ["ws"] }
-    mime_guess        = "*"
-    include_dir       = "*"
-    webbrowser        = "*"
+    tokio             = { version = "1.52.1", features = ["full"] }
+    tokio-tungstenite = "0.29.0"
+    futures-util      = "0.3.32"
+    reqwest           = { version = "0.13.3", features = ["json"] }
+    axum              = { version = "0.8.9", features = ["ws"] }
+    mime_guess        = "2.0.5"
+    include_dir       = "0.7.4"
+    webbrowser        = "1.2.1"
 
 [build-dependencies]
-    anyhow                   = "*"
-    wasm-bindgen-cli-support = "*"
+    anyhow                   = "1.0.102"
+    wasm-bindgen-cli-support = "0.2.120"

@@ -2,9 +2,8 @@ use std::cell::RefCell;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{LazyLock, Mutex};
 
+use shared::{FieldNamesAsArray, VariantArray};
 use slint::{ModelRc, SharedString, StandardListViewItem, TableColumn, VecModel, Weak};
-use shared::FieldNamesAsArray;
-use strum::VariantArray;
 use wasm_bindgen::prelude::*;
 use web_sys::{
     MessageEvent, WebSocket,

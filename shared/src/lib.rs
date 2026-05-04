@@ -10,6 +10,7 @@ pub mod bindings {
 
 pub use bindings::*;
 pub use struct_field_names_as_array::FieldNamesAsArray;
+pub use strum::VariantArray;
 
 impl InputData {
     pub fn to_bytes(&self) -> Vec<u8> {

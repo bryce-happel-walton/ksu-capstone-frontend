@@ -1,6 +1,6 @@
 [package]
     name    = "client"
-    version = "0.5.0"
+    version = "1.0.0"
     edition = "2024"
 
 [lib]
@@ -10,14 +10,13 @@
 
 [dependencies]
     shared               = { workspace = true }
-    strum                = { workspace = true }
-    tokio                = { version = "*", default-features = false, features = ["sync", "rt", "macros", "time"] }
-    slint                = "*"
-    async-compat         = "*"
-    web-sys              = { version = "*", features = ["WebSocket", "MessageEvent", "ErrorEvent", "Window", "Location", "console", "UiEvent", "BinaryType", "Blob", "BlobPropertyBag", "ImageBitmap", "HtmlCanvasElement", "CanvasRenderingContext2d", "ImageData", "Document", "Element"] }
-    wasm-bindgen         = { version = "*" }
-    wasm-bindgen-futures = { version = "*" }
-    js-sys               = { version = "*" }
+    tokio                = { version = "1.52.1", default-features = false, features = ["sync", "rt", "macros", "time"] }
+    slint                = "1.16.1"
+    async-compat         = "0.2.5"
+    web-sys              = { version = "0.3.97", features = ["WebSocket", "MessageEvent", "ErrorEvent", "Window", "Location", "console", "UiEvent", "BinaryType", "Blob", "BlobPropertyBag", "ImageBitmap", "HtmlCanvasElement", "CanvasRenderingContext2d", "ImageData", "Document", "Element"] }
+    wasm-bindgen         = { version = "0.2.120" }
+    wasm-bindgen-futures = { version = "0.4.70" }
+    js-sys               = { version = "0.3.97" }
 
 [build-dependencies]
     anyhow      = "*"

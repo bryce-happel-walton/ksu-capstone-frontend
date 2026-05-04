@@ -1,6 +1,6 @@
 [package]
     name    = "shared"
-    version = "0.3.0"
+    version = "1.0.0"
     edition = "2024"
 
 [lib]
@@ -8,8 +8,8 @@
     name = "shared"
 
 [dependencies]
-    strum                       = { workspace = true }
-    struct-field-names-as-array = "*"
+    struct-field-names-as-array = "0.3.0"
+    strum                       = { version = "0.28.0", features = ["derive"] }
 
 [build-dependencies]
-    bindgen = "*"
+    bindgen = "0.72.1"
